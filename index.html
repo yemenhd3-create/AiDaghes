@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>مختبر داغس | Daghes Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Prism for Analyzer -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <!-- CodeMirror for Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;600;800&display=swap');
+        body { font-family: 'Tajawal', sans-serif; touch-action: pan-x pan-y; }
+        * { -webkit-tap-highlight-color: transparent; }
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        input, textarea, select { font-size: 16px !important; }
+        nav { position: sticky; top: 0; z-index: 50; }
+        .step { margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; border-right: 4px solid #6366f1; }
+        .step h4 { font-weight: bold; color: #334155; margin-bottom: 0.25rem; }
+        .step p { font-size: 0.85rem; color: #64748b; }
+        .CodeMirror { border-radius: 0.5rem; height: 300px; font-size: 14px; }
+        .CodeMirror-scroll { overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col overflow-x-hidden">
+
+<!-- AUTHENTICATION OVERLAY -->
+<div id="authOverlay" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-xl text-center">
+        <h1 class="text-2xl font-bold text-white mb-2">مختبر داغس</h1>
+        <p class="text-slate-400 text-sm mb-6">Secure Access</p>
+        <div id="setupForm" class="space-y-4">
+            <p class="text-slate-300 text-sm mb-2">إعداد أولي</p>
+            <input type="text" id="setupUser" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white" placeholder="اسم المستخدم">
+            <input type="password" id="setupPass" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white" placeholder="كلمة المرور">
+            <button onclick="setupAuth()" class="w-full bg-indigo-600 py-3 rounded-xl font-bold text-white shadow-lg">إنشاء حساب</button>
+        </div>
+        <div id="loginForm" class="hidden space-y-4">
+            <p class="text-slate-300 text-sm mb-2">تسجيل الدخول</p>
+            <input type="text" id="loginUser" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white" placeholder="اسم المستخدم">
+            <input type="password" id="loginPass" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white" placeholder="كلمة المرور">
+            <button onclick="tryLogin()" class="w-full bg-indigo-600 py-3 rounded-xl font-bold text-white shadow-lg">دخول</button>
+            <button onclick="showRecovery()" class="w-full text-slate-400 text-sm mt-2">نسيت كلمة المرور؟</button>
+        </div>
+        <div id="recoveryForm" class="hidden space-y-4">
+            <p class="text-slate-300 text-sm mb-2">استعادة</p>
+            <input type="text" id="recoveryCodeInput" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white" placeholder="رمز التعافي">
+            <button onclick="recoverAuth()" class="w-full bg-green-600 py-3 rounded-xl font-bold text-white">استعادة</button>
+            <button onclick="hideRecovery()" class="w-full text-slate-400 text-sm">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden flex flex-col w-full h-[100vh]">
+    <header class="bg-white shadow-sm border-b border-slate-200 px-4 py-3 flex justify-between items-center">
+        <h1 class="text-lg font-bold text-slate-700">مختبر داغس <span class="text-indigo-600">Daghes</span></h1>
+        <div class="flex gap-2">
+            <button onclick="exportCode()" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg font-bold">تصدير</button>
+            <button onclick="logout()" class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-lg font-bold">خروج</button>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-slate-200 overflow-x-auto py-2 px-4 flex gap-2 w-full shrink-0">
+        <button onclick="showPanel('dashboard')" class="tab-btn active whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold bg-indigo-50 text-indigo-600">الرئيسية</button>
+        <button onclick="showPanel('project-manager')" class="tab-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold text-slate-600">إدارة</button>
+        <button onclick="showPanel('plugins')" class="tab-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold text-slate-600">إضافات</button>
+        <button onclick="showPanel('api')" class="tab-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold text-slate-600">API</button>
+        <button onclick="showPanel('file-analyzer')" class="tab-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold text-slate-600">فحص</button>
+        <button onclick="showPanel('github')" class="tab-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold text-slate-600">GitHub</button>
+        <button onclick="showPanel('settings')" class="tab-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-bold text-slate-600">إعدادات</button>
+    </nav>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full p-4 overflow-y-auto">
+        
+        <!-- DASHBOARD -->
+        <div id="dashboard" class="panel active space-y-4">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+                <h2 class="text-xl font-bold mb-2">مرحبا بك</h2>
+                <p class="text-sm opacity-90">Daghes Lab v17.4 (Complete)</p>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-lg text-slate-700 mb-3">📖 دليل التشغيل</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="step">
+                            <h4>1️⃣ التشغيل</h4>
+                            <p>افتح الملف بمتصفح <strong>Chrome</strong>. للحصول على أفضل تجربة، ارفعه على <strong>GitHub Pages</strong>.</p>
+                        </div>
+                        <div class="step">
+                            <h4>2️⃣ GitHub API</h4>
+                            <p>لتجاوز CORS، ضع رابط Proxy في قسم الإعدادات (يمكنك إنشاء Proxy مجاني عبر Cloudflare Workers).</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                        <span class="text-2xl block mb-1">📁</span>
+                        <p class="font-bold text-sm">مدير الملفات</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                        <span class="text-2xl block mb-1">🔗</span>
+                        <p class="font-bold text-sm">تزامن GitHub</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROJECT MANAGER (with CodeMirror) -->
+        <div id="project-manager" class="panel space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
+                    📁 محرر ومدير الملفات
+                </h2>
+                <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-4 text-sm text-amber-800">
+                    <strong>⚠️:</strong> يتطلب Token بصلاحيات <code>repo</code>
+                </div>
+                <div class="flex flex-col gap-3 mb-4">
+                    <input type="text" id="pmRepoOwner" placeholder="اسم المستخدم (User)" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                    <input type="text" id="pmRepoName" placeholder="اسم المستودع (Repo)" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                    <input type="text" id="pmPath" placeholder="المسار (/)" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                    <button onclick="fetchRepoDir()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">تصفح</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-1 bg-slate-50 p-3 rounded-lg border border-slate-200 h-80 overflow-y-auto" id="fileTree">
+                        <p class="text-center text-slate-400 mt-20">اختر مستودع للبدء</p>
+                    </div>
+                    <div class="md:col-span-2 flex flex-col h-80 gap-2">
+                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded-lg border border-slate-700">
+                            <span class="text-slate-300 text-sm font-mono" id="fileNameDisplay">...</span>
+                            <button onclick="saveFileToRepo()" class="text-xs bg-green-600 text-white px-3 py-1 rounded font-bold">حفظ</button>
+                        </div>
+                        <!-- CodeMirror Editor Div -->
+                        <div id="repoFileEditor" class="flex-1 border border-slate-700 rounded-lg overflow-hidden"></div>
+                    </div>
+                </div>
+                <div class="mt-4 bg-slate-900 p-2 rounded text-xs font-mono text-slate-300 h-16 overflow-auto" id="pmLog">Log: جاهز...</div>
+            </div>
+        </div>
+
+        <!-- PLUGINS (with Import/Export) -->
+        <div id="plugins" class="panel space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
+                    🔌 نظام الإضافات
+                </h2>
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <input type="text" id="pluginName" placeholder="اسم الأداة" class="flex-1 min-w-[150px] p-2 border border-slate-300 rounded-lg text-sm">
+                    <textarea id="pluginBody" placeholder='{"key": "value"}' class="flex-1 min-w-[200px] p-2 border border-slate-300 rounded-lg text-sm h-10"></textarea>
+                    <button onclick="savePlugin()" class="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-bold">حفظ محلي</button>
+                </div>
+                <div class="flex flex-wrap gap-3 mb-4 bg-slate-50 p-3 rounded-lg">
+                    <button onclick="exportPlugins()" class="bg-slate-700 text-white py-2 px-4 rounded-lg text-sm font-bold">📤 تصدير JSON</button>
+                    <label class="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-bold cursor-pointer">📥 استيراد JSON
+                        <input type="file" id="pluginUpload" accept=".json" class="hidden">
+                    </label>
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-200 h-60 overflow-y-auto" id="pluginList"></div>
+                    <div class="flex-1 bg-slate-900 p-3 rounded-lg border border-slate-700 h-60 overflow-y-auto text-green-400 text-xs font-mono" id="pluginOutput">...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API TESTER -->
+        <div id="api" class="panel space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold mb-4 text-slate-700">API Tester</h2>
+                <div class="flex gap-2 mb-3">
+                    <select id="apiMethod" class="p-2 border border-slate-300 rounded-lg bg-slate-50"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select>
+                    <input type="text" id="apiUrl" placeholder="الرابط" class="flex-1 p-2 border border-slate-300 rounded-lg">
+                </div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="apiAuth" placeholder="Token (اختياري)" class="flex-1 p-2 border border-slate-300 rounded-lg">
+                </div>
+                <button onclick="sendApi()" class="bg-indigo-600 text-white w-full py-2 rounded-lg font-bold">إرسال</button>
+            </div>
+            <div class="bg-slate-900 rounded-xl p-4 text-green-400 font-mono text-sm overflow-auto max-h-64" id="apiResult">...</div>
+        </div>
+
+        <!-- FILE ANALYZER -->
+        <div id="file-analyzer" class="panel space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold mb-4 text-slate-700">📂 فحص وتشفير</h2>
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer relative" id="dropZone">
+                    <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <div class="flex flex-col items-center">
+                        <span class="text-4xl mb-2">📂</span>
+                        <p class="text-slate-600 font-bold">اضغط أو اسحب ملفا هنا</p>
+                    </div>
+                </div>
+            </div>
+            <div id="analysisResults" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-1 space-y-4">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-3">📊 تفاصيل</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-slate-500">الاسم:</span> <span class="font-semibold" id="fileName">-</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">النوع:</span> <span class="font-semibold text-indigo-600" id="fileLang">-</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-indigo-50 p-5 rounded-xl shadow-sm border border-indigo-100">
+                        <h3 class="font-bold text-slate-700 mb-3 text-sm">🔓 محولات</h3>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="decodeBase64File()" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700">تحويل من Base64</button>
+                            <button onclick="formatJsonFile()" class="w-full bg-slate-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-slate-700">تنسيق JSON</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2">
+                    <div class="bg-slate-900 rounded-xl shadow-sm overflow-hidden">
+                        <div class="flex justify-between items-center px-4 py-2 bg-slate-800 border-b border-slate-700">
+                            <span class="text-xs text-slate-300">الكود</span>
+                            <button onclick="copyCode()" class="text-xs text-white hover:text-indigo-400 font-bold">نسخ</button>
+                        </div>
+                        <div class="overflow-auto max-h-[400px]">
+                            <pre class="text-preview"><code id="codeOutput" class="language-text">اختر ملفا للبدء...</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GITHUB SYNC -->
+        <div id="github" class="panel space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
+                    <span class="text-2xl">🔗</span> GitHub Sync
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="password" id="ghToken" placeholder="Token" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                    <input type="text" id="ghRepo" placeholder="User/Repo" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button onclick="syncToGithub()" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold">Push (نسخة احتياطية)</button>
+                    <button onclick="getFromGithub()" class="flex-1 bg-slate-600 text-white py-2 rounded-lg font-bold">Pull (استرجاع)</button>
+                </div>
+                <div class="mt-4 bg-slate-900 text-slate-300 p-3 rounded-lg text-xs font-mono h-32 overflow-auto" id="ghLog">
+                    <div>Log:</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="settings" class="panel space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold mb-4 text-slate-700">الإعدادات</h2>
+                <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span>الوضع المظلم</span>
+                    <input type="checkbox" id="darkMode" class="w-5 h-5" onchange="toggleTheme()">
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">🔗 إعدادات Proxy</label>
+                    <input type="text" id="proxyInput" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-slate-50" placeholder="https://your-worker.workers.dev">
+                    <p class="text-xs text-slate-500 mt-1">اتركه فارغاً ليعمل مباشرة من المتصفح (قد يفشل بسبب CORS).</p>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span>مسح كل البيانات</span>
+                    <button onclick="fullReset()" class="text-red-500 text-sm">Reset</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- CodeMirror Resources -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+
+<script>
+    // --- CONFIG & STATE ---
+    const LS_USER = 'daghes_user'; const LS_PASS = 'daghes_pass'; const LS_RECOVERY = 'daghes_recovery'; const LS_PLUGINS = 'daghes_plugins'; const LS_REPO = 'daghes_repo'; const LS_PROXY = 'daghes_proxy';
+    const PROXY_URL = localStorage.getItem(LS_PROXY) || ''; 
+
+    // --- AUTHENTICATION ---
+    function setupAuth() {
+        const u = document.getElementById('setupUser').value; const p = document.getElementById('setupPass').value;
+        if(!u || !p) return alert('الرجاء ملء الحقول');
+        const r = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+        localStorage.setItem(LS_USER, u); localStorage.setItem(LS_PASS, btoa(p)); localStorage.setItem(LS_RECOVERY, r);
+        alert('تم الإعداد بنجاح! رمزك: ' + r); location.reload();
+    }
+    function tryLogin() {
+        const u = document.getElementById('loginUser').value; const p = document.getElementById('loginPass').value;
+        if(u === localStorage.getItem(LS_USER) && btoa(p) === localStorage.getItem(LS_PASS)) {
+            document.getElementById('authOverlay').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden');
+        } else { alert('بيانات خاطئة!'); }
+    }
+    function logout() { location.reload(); }
+    function showRecovery() { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('recoveryForm').classList.remove('hidden'); }
+    function hideRecovery() { document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('recoveryForm').classList.add('hidden'); }
+    function recoverAuth() {
+        const code = document.getElementById('recoveryCodeInput').value;
+        if(code === localStorage.getItem(LS_RECOVERY)) {
+            const newPass = prompt("كلمة المرور الجديدة؟");
+            if(newPass) { localStorage.setItem(LS_PASS, btoa(newPass)); alert('تم استعادة الوصول!'); location.reload(); }
+        } else { alert('رمز التعافي خاطئ!'); }
+    }
+
+    // --- NAVIGATION & SETUP ---
+    let editor;
+    function showPanel(id) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('bg-indigo-50', 'text-indigo-600'));
+        const btn = document.querySelector(`button[onclick="showPanel('${id}')"]`);
+        if(btn) btn.classList.add('bg-indigo-50', 'text-indigo-600');
+        if(id === 'plugins') loadPlugins();
+        if(id === 'project-manager') initRepoPath();
+    }
+
+    // --- PROJECT MANAGER & CODE EDITOR ---
+    function initRepoPath() {
+        const saved = JSON.parse(localStorage.getItem(LS_REPO) || '{}');
+        document.getElementById('pmRepoOwner').value = saved.owner || '';
+        document.getElementById('pmRepoName').value = saved.repo || '';
+        if(!editor) {
+            const textarea = document.createElement('textarea');
+            textarea.id = 'repoFileContent';
+            document.getElementById('repoFileEditor').appendChild(textarea);
+            editor = CodeMirror.fromTextArea(textarea, {
+                mode: "htmlmixed",
+                theme: "dracula",
+                lineNumbers: true,
+                lineWrapping: true
+            });
+        }
+    }
+    function saveRepoPath() {
+        const owner = document.getElementById('pmRepoOwner').value;
+        const repo = document.getElementById('pmRepoName').value;
+        localStorage.setItem(LS_REPO, JSON.stringify({ owner, repo }));
+    }
+    function logPM(msg) {
+        const box = document.getElementById('pmLog');
+        box.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + box.innerHTML;
+    }
+    async function fetchRepoDir() {
+        saveRepoPath();
+        const owner = document.getElementById('pmRepoOwner').value;
+        const repo = document.getElementById('pmRepoName').value;
+        const path = document.getElementById('pmPath').value || '/';
+        const token = prompt('أدخل GitHub Token:', '');
+        if(!token) return alert('Token مطلوب للوصول');
+
+        logPM('جاري جلب الملفات...');
+        try {
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repo}/contents/${path}` 
+                : `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            
+            const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' } });
+            if(!res.ok) throw new Error('فشل الوصول. تأكد من Token والصلاحيات.');
+            const data = await res.json();
+            const tree = document.getElementById('fileTree');
+            tree.innerHTML = '';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `p-3 cursor-pointer rounded hover:bg-slate-100 text-sm border-b border-slate-100 ${item.type === 'file' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`;
+                div.innerHTML = `${item.type === 'dir' ? '📁' : '📄'} ${item.name}`;
+                div.onclick = () => {
+                    if(item.type === 'dir') {
+                        document.getElementById('pmPath').value = item.path;
+                        fetchRepoDir();
+                    } else loadFile(item, token);
+                };
+                tree.appendChild(div);
+            });
+            logPM('تم عرض المجلد');
+        } catch(e) {
+            logPM('خطأ: ' + e.message);
+            alert(e.message);
+        }
+    }
+    async function loadFile(item, token) {
+        try {
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github${item.url}` 
+                : item.url;
+            const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
+            const data = await res.json();
+            const content = atob(data.content);
+            if(editor) editor.setValue(content);
+            document.getElementById('fileNameDisplay').innerText = item.path;
+            sessionStorage.setItem('pmFileUrl', item.url);
+            sessionStorage.setItem('pmFileSha', data.sha);
+            logPM('تم تحميل الملف: ' + item.name);
+        } catch(e) {
+            logPM('خطأ في التحميل: ' + e.message);
+        }
+    }
+    async function saveFileToRepo() {
+        if(!editor) return alert('المحرر لم يتم تحميله.');
+        const content = editor.getValue();
+        const url = sessionStorage.getItem('pmFileUrl');
+        const sha = sessionStorage.getItem('pmFileSha');
+        if(!url || !sha) return alert('الرجاء تحميل الملف أولاُ');
+        const token = prompt('أدخل GitHub Token:', '');
+        if(!token) return;
+
+        logPM('جاري حفظ الملف...');
+        try {
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github${url.replace('https://api.github.com', '')}` 
+                : url;
+
+            const res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `Update from Lab`, content: btoa(content), sha: sha }) });
+            if(res.ok) { logPM('✅ تم التحديث'); alert('تم الحفظ بنجاح'); }
+            else { logPM('❌ فشل'); alert('فشل الحفظ'); }
+        } catch(e) { logPM('❌ خطأ: ' + e.message); alert(e.message); }
+    }
+    function createNewFile() {
+        const name = prompt('اسم الملف الجديد (مثال: plugins/test.js):');
+        if(!name) return;
+        const content = prompt('المحتوى المبدئي:', '');
+        const owner = document.getElementById('pmRepoOwner').value;
+        const repo = document.getElementById('pmRepoName').value;
+        const token = prompt('أدخل GitHub Token:', '');
+        if(!token) return;
+
+        logPM('جاري إنشاء الملف...');
+        try {
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repo}/contents/${name}` 
+                : `https://api.github.com/repos/${owner}/${repo}/contents/${name}`;
+
+            const res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `New file from Lab`, content: btoa(content) }) });
+            const data = await res.json();
+            logPM('✅ تم إنشاء الملف: ' + name);
+            alert('تم إنشاء الملف بنجاح');
+        } catch(e) { logPM('❌ خطأ: ' + e.message); alert(e.message); }
+    }
+
+    // --- PLUGINS (Import/Export) ---
+    function loadPlugins() {
+        const list = document.getElementById('pluginList');
+        const plugins = JSON.parse(localStorage.getItem(LS_PLUGINS) || '[]');
+        list.innerHTML = plugins.map((p, i) => 
+            `<div class="bg-white p-2 rounded border border-slate-200 flex justify-between items-center text-sm">
+                <span class="font-bold">${p.name}</span>
+                <button onclick="deletePlugin(${i})" class="text-red-500 hover:text-red-700">❌</button>
+            </div>`
+        ).join('');
+    }
+    function savePlugin() {
+        const name = document.getElementById('pluginName').value;
+        const body = document.getElementById('pluginBody').value;
+        if(!name) return alert('أدخل الاسم');
+        const plugins = JSON.parse(localStorage.getItem(LS_PLUGINS) || '[]');
+        plugins.push({ name, body });
+        localStorage.setItem(LS_PLUGINS, JSON.stringify(plugins));
+        loadPlugins(); alert('تم الحفظ المحلي');
+    }
+    function deletePlugin(i) {
+        const plugins = JSON.parse(localStorage.getItem(LS_PLUGINS) || '[]');
+        plugins.splice(i, 1);
+        localStorage.setItem(LS_PLUGINS, JSON.stringify(plugins));
+        loadPlugins();
+    }
+    function exportPlugins() {
+        const data = localStorage.getItem(LS_PLUGINS) || '[]';
+        const blob = new Blob([data], {type:'application/json'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='daghes_plugins.json'; a.click();
+    }
+    document.getElementById('pluginUpload').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = JSON.parse(evt.target.result);
+                const current = JSON.parse(localStorage.getItem(LS_PLUGINS) || '[]');
+                const merged = [...current, ...data];
+                localStorage.setItem(LS_PLUGINS, JSON.stringify(merged));
+                loadPlugins();
+                alert('تم استيراد الإضافات بنجاح!');
+            } catch (err) {
+                alert('الملف غير صالح: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    async function deployPluginToRepo() {
+        const name = document.getElementById('pluginName').value;
+        const body = document.getElementById('pluginBody').value;
+        const owner = document.getElementById('pmRepoOwner').value;
+        const repo = document.getElementById('pmRepoName').value;
+        const token = prompt('أدخل GitHub Token:', '');
+        if(!name || !owner || !repo) return alert('أدخل البيانات المطلوبة');
+        if(!token) return;
+
+        try {
+            const path = `plugins/${name}.json`;
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repo}/contents/${path}` 
+                : `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+            const res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `Add plugin ${name}`, content: btoa(body) }) });
+            const data = await res.json();
+            document.getElementById('pluginOutput').innerText = `✅ تم النشر بنجاح!\nرابط الملف: ${data.content.html_url}`;
+        } catch(e) { document.getElementById('pluginOutput').innerText = `❌ خطأ: ${e.message}`; }
+    }
+
+    // --- API ---
+    async function sendApi() {
+        const url = document.getElementById('apiUrl').value; const resBox = document.getElementById('apiResult');
+        if(!url) { resBox.innerText = "أدخل رابطاً"; return; }
+        resBox.innerText = "جاري الاتصال...";
+        try { 
+            const headers = {}; 
+            const auth = document.getElementById('apiAuth').value; 
+            if(auth) headers['Authorization'] = auth;
+            const res = await fetch(url, { headers }); 
+            const data = await res.json(); 
+            resBox.innerText = JSON.stringify(data, null, 2); 
+        } 
+        catch(e) { resBox.innerText = `خطأ: ${e.message}`; }
+    }
+
+    // --- FILE ANALYZER ---
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', (e) => {
+        if(e.target.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const content = evt.target.result;
+                document.getElementById('codeOutput').innerText = content;
+                document.getElementById('fileName').innerText = e.target.files[0].name;
+                document.getElementById('fileLang').innerText = e.target.files[0].name.split('.').pop();
+                document.getElementById('analysisResults').classList.remove('hidden');
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+    });
+    function decodeBase64File() {
+        const current = document.getElementById('codeOutput').innerText;
+        if(!current) return;
+        try { document.getElementById('codeOutput').innerText = atob(current); alert('تم فك التشفير'); } catch(e) { alert('خطأ في التشفير'); }
+    }
+    function formatJsonFile() {
+        const current = document.getElementById('codeOutput').innerText;
+        if(!current) return;
+        try { document.getElementById('codeOutput').innerText = JSON.stringify(JSON.parse(current), null, 2); alert('تم التنسيق'); } catch(e) { alert('JSON غير صالح'); }
+    }
+    function copyCode() { navigator.clipboard.writeText(document.getElementById('codeOutput').innerText); alert('تم النسخ'); }
+
+    // --- GITHUB SYNC ---
+    function log(msg) {
+        const box = document.getElementById('ghLog'); box.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`; box.scrollTop = box.scrollHeight;
+    }
+    async function syncToGithub() {
+        const token = document.getElementById('ghToken').value; const repo = document.getElementById('ghRepo').value;
+        if(!token || !repo) { log('❌ يرجى إدخال Token واسم المستودع'); return; }
+        const [owner, repoName] = repo.split('/'); if(!owner || !repoName) { log('❌ تنسيق المستودع غير صحيح'); return; }
+        log(`جاري مزامنة daghes.html...`);
+        try {
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repoName}/contents/daghes.html` 
+                : `https://api.github.com/repos/${owner}/${repoName}/contents/daghes.html`;
+
+            const checkRes = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
+            let sha = '';
+            if(checkRes.ok) { sha = (await checkRes.json()).sha; log('✅ الملف موجود، سيتم تحديثه.'); } 
+            else { log('ℹ️ الملف غير موجود، سيتم إنشاؤه.'); }
+            const content = document.documentElement.outerHTML; const base64Content = btoa(content);
+            const commitRes = await fetch(apiUrl, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` },
+                body: JSON.stringify({ message: `Update from Daghes`, content: base64Content, sha: sha || undefined })
+            });
+            if(commitRes.ok) { log('🚀 تم المزامنة بنجاح!'); alert('تم حفظ الملف في المستودع!'); }
+            else { const err = await commitRes.json(); log(`❌ خطأ: ${err.message}`); }
+        } catch(e) { log(`❌ خطأ في الاتصال: ${e.message}`); }
+    }
+    async function getFromGithub() {
+        const token = document.getElementById('ghToken').value; const repo = document.getElementById('ghRepo').value;
+        if(!token || !repo) { log('❌ يرجى إدخال Token واسم المستودع'); return; }
+        const [owner, repoName] = repo.split('/');
+        log(`جاري جلب daghes.html...`);
+        try {
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repoName}/contents/daghes.html` 
+                : `https://api.github.com/repos/${owner}/${repoName}/contents/daghes.html`;
+
+            const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
+            if(res.ok) { const data = await res.json(); const content = atob(data.content); localStorage.setItem('devlab_synced_content', content); log('✅ تم جلب المحتوى.'); alert('تم جلب الملف!'); }
+            else { log('❌ خطأ: لم يتم العثور على الملف'); }
+        } catch(e) { log(`❌ خطأ في الاتصال: ${e.message}`); }
+    }
+
+    // --- SETTINGS ---
+    document.getElementById('proxyInput').addEventListener('input', (e) => {
+        localStorage.setItem(LS_PROXY, e.target.value);
+    });
+    function fullReset() { if(confirm('هل أنت متأكد؟')) { localStorage.clear(); location.reload(); } }
+    function toggleTheme() { document.body.classList.toggle('bg-slate-900'); document.body.classList.toggle('text-white'); }
+    function exportCode() {
+        const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='daghes_lab.html'; a.click();
+    }
+
+    showPanel('dashboard');
+</script>
+
+</body>
+</html>
