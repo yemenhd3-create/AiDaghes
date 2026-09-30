@@ -6,6 +6,9 @@
     <title>مختبر داغس | Daghes Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <!-- CodeMirror for Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;600;800&display=swap');
         body { font-family: 'Tajawal', sans-serif; }
@@ -24,35 +27,22 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        #authOverlay { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .auth-card { background: #1e293b; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 400px; text-align: center; border: 1px solid #334155; }
-        .auth-input { width: 100%; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; border: 1px solid #475569; background: #0f172a; color: white; }
+        /* CodeMirror Fixes */
+        .CodeMirror { border-radius: 0.5rem; height: 300px; font-size: 14px; }
+        .CodeMirror-scroll { overflow-y: auto; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
 
-<!-- AUTHENTICATION OVERLAY -->
-<div id="authOverlay">
-    <div class="auth-card">
-        <div class="mb-4">
-            <h1 class="text-2xl font-bold text-white">مختبر داغس</h1>
-            <p class="text-slate-400 text-sm">Daghes Lab Secure Access</p>
-        </div>
-        <div id="setupForm"><p class="text-slate-300 mb-4 text-sm">إعداد أولي</p><input type="text" id="setupUser" class="auth-input" placeholder="اسم المستخدم"><input type="password" id="setupPass" class="auth-input" placeholder="كلمة المرور"><button onclick="setupAuth()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold">إنشاء حساب</button></div>
-        <div id="loginForm" class="hidden"><p class="text-slate-300 mb-4 text-sm">تسجيل الدخول</p><input type="text" id="loginUser" class="auth-input" placeholder="اسم المستخدم"><input type="password" id="loginPass" class="auth-input" placeholder="كلمة المرور"><button onclick="tryLogin()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold">دخول</button><button onclick="showRecovery()" class="mt-3 text-xs text-slate-400 underline">نسيت كلمة المرور؟</button></div>
-        <div id="recoveryForm" class="hidden"><p class="text-slate-300 mb-4 text-sm">استعادة</p><input type="text" id="recoveryCodeInput" class="auth-input" placeholder="رمز التعافي"><button onclick="recoverAuth()" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold">استعادة</button><button onclick="hideRecovery()" class="mt-3 text-xs text-slate-400">إلغاء</button></div>
-    </div>
-</div>
-
 <!-- MAIN APP -->
-<div id="mainApp" class="hidden flex flex-col w-full h-full">
+<div id="mainApp" class="flex flex-col w-full h-full">
     <header class="bg-white shadow-sm border-b border-slate-200 px-4 py-3">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold text-slate-700">مختبر داغس <span class="text-indigo-600">Daghes</span></h1>
             <div class="flex gap-2">
                 <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-slate-100">🌙</button>
                 <button onclick="exportCode()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded">تصدير</button>
-                <button onclick="logout()" class="text-xs bg-slate-700 text-white px-3 py-1 rounded">خروج</button>
+                <button onclick="location.reload()" class="text-xs bg-slate-700 text-white px-3 py-1 rounded">تحديث</button>
             </div>
         </div>
     </header>
@@ -75,25 +65,25 @@
         <div id="dashboard" class="panel active space-y-4">
             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
                 <h2 class="text-2xl font-bold mb-2">Daghes Lab</h2>
-                <p class="text-indigo-100 opacity-90">الإصدار 17.0 - نظام إدارة المشروع المباشر.</p>
+                <p class="text-indigo-100 opacity-90">الإصدار 17.3 Final - بدون تسجيل دخول</p>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
                     <span class="text-2xl">📁</span>
-                    <p class="font-bold text-sm mt-1">مدير المشروع</p>
+                    <p class="font-bold text-sm mt-1">محرر احترافي</p>
                 </div>
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
                     <span class="text-2xl">🔌</span>
-                    <p class="font-bold text-sm mt-1">إضافات تلقائية</p>
+                    <p class="font-bold text-sm mt-1">استيراد/تصدير</p>
                 </div>
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
                     <span class="text-2xl">🔗</span>
-                    <p class="font-bold text-sm mt-1">GitHub Direct</p>
+                    <p class="font-bold text-sm mt-1">GitHub Sync</p>
                 </div>
             </div>
         </div>
 
-        <!-- PROJECT MANAGER (NEW) -->
+        <!-- PROJECT MANAGER -->
         <div id="project-manager" class="panel space-y-4">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
@@ -119,7 +109,8 @@
                             <span class="text-slate-300 text-sm">المحرر</span>
                             <button onclick="saveFileToRepo()" class="text-xs bg-green-600 text-white px-2 py-1 rounded">حفظ</button>
                         </div>
-                        <textarea id="repoFileContent" class="flex-1 bg-slate-800 text-green-400 font-mono text-sm p-2 rounded outline-none border border-slate-700"></textarea>
+                        <!-- CodeMirror Container -->
+                        <div id="repoFileEditor" class="flex-1 border border-slate-700 rounded-lg overflow-hidden"></div>
                         <div class="mt-2 text-xs text-slate-400 flex justify-between">
                             <span id="fileNameDisplay">...</span>
                             <button onclick="createNewFile()" class="text-indigo-400 hover:underline">ملف جديد</button>
@@ -130,37 +121,31 @@
             </div>
         </div>
 
-        <!-- PLUGINS & AUTO-SYNC -->
+        <!-- PLUGINS -->
         <div id="plugins" class="panel space-y-4">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
                     🔌 نظام الإضافات والدمج الذكي
                 </h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-1 space-y-3">
-                        <div>
-                            <label class="text-xs block mb-1 font-bold">اسم الأداة</label>
-                            <input type="text" id="pluginName" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="text-xs block mb-1 font-bold">Body (JSON)</label>
-                            <textarea id="pluginBody" placeholder='{"key": "value"}' class="w-full p-2 border border-slate-300 rounded-lg text-sm h-20"></textarea>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="savePlugin()" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold">حفظ محلي</button>
-                            <button onclick="deployPluginToRepo()" class="flex-1 bg-amber-600 text-white py-2 rounded-lg text-sm font-bold">🚀 دمج مع Repo</button>
-                        </div>
-                        <p class="text-xs text-slate-500 mt-1">سيتم إنشاء ملف تلقائي في repo/plugins/</p>
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <input type="text" id="pluginName" placeholder="اسم الأداة" class="flex-1 p-2 border border-slate-300 rounded-lg text-sm">
+                    <textarea id="pluginBody" placeholder='{"key": "value"}' class="flex-1 p-2 border border-slate-300 rounded-lg text-sm h-10"></textarea>
+                    <button onclick="savePlugin()" class="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-bold">حفظ محلي</button>
+                </div>
+                <div class="flex flex-wrap gap-3 mb-4 bg-slate-50 p-3 rounded-lg">
+                    <button onclick="exportPlugins()" class="bg-slate-700 text-white py-2 px-4 rounded-lg text-sm font-bold">📤 تصدير JSON</button>
+                    <label class="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-bold cursor-pointer">📥 استيراد JSON
+                        <input type="file" id="pluginUpload" accept=".json" class="hidden">
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <h3 class="font-bold text-sm text-slate-700 mb-2">الأدوات المسجلة</h3>
+                        <div id="pluginList" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
                     </div>
-                    <div class="md:col-span-2 space-y-3">
-                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <h3 class="font-bold text-sm text-slate-700 mb-2">الأدوات المسجلة</h3>
-                            <div id="pluginList" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
-                        </div>
-                        <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
-                            <h3 class="font-bold text-sm text-slate-300 mb-2">سجل الاندماج</h3>
-                            <pre id="pluginOutput" class="text-green-400 text-xs font-mono overflow-auto h-40">...</pre>
-                        </div>
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <h3 class="font-bold text-sm text-slate-300 mb-2">سجل الاندماج</h3>
+                        <pre id="pluginOutput" class="text-green-400 text-xs font-mono overflow-auto h-40">...</pre>
                     </div>
                 </div>
             </div>
@@ -229,7 +214,7 @@
             </div>
         </div>
 
-        <!-- GITHUB SYNC (Main) -->
+        <!-- GITHUB SYNC -->
         <div id="github" class="panel space-y-4">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
@@ -261,6 +246,11 @@
         <div id="settings" class="panel space-y-4">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <h2 class="text-lg font-bold mb-4 text-slate-700">الإعدادات العامة والأمنية</h2>
+                <div class="mt-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">🔗 إعدادات Proxy</label>
+                    <input type="text" id="proxyInput" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-slate-50" placeholder="https://your-worker.workers.dev">
+                    <p class="text-xs text-slate-500 mt-1">اتركه فارغاً ليعمل مباشرة من المتصفح (قد يفشل بسبب CORS).</p>
+                </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                     <span>الوضع المظلم</span>
                     <input type="checkbox" id="darkMode" class="w-5 h-5">
@@ -275,34 +265,22 @@
     </main>
 </div>
 
+<!-- CodeMirror Resources -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+
 <script>
-    // --- AUTHENTICATION ---
-    const LS_USER = 'daghes_user'; const LS_PASS = 'daghes_pass'; const LS_RECOVERY = 'daghes_recovery'; const LS_PLUGINS = 'daghes_plugins'; const LS_REPO = 'daghes_repo';
-    function setupAuth() {
-        const u = document.getElementById('setupUser').value; const p = document.getElementById('setupPass').value;
-        if(!u || !p) return alert('الرجاء ملء الحقول');
-        const r = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-        localStorage.setItem(LS_USER, u); localStorage.setItem(LS_PASS, btoa(p)); localStorage.setItem(LS_RECOVERY, r);
-        alert('تم الإعداد بنجاح! رمزك: ' + r); location.reload();
-    }
-    function tryLogin() {
-        const u = document.getElementById('loginUser').value; const p = document.getElementById('loginPass').value;
-        if(u === localStorage.getItem(LS_USER) && btoa(p) === localStorage.getItem(LS_PASS)) {
-            document.getElementById('authOverlay').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden');
-        } else { alert('بيانات خاطئة!'); }
-    }
-    function logout() { location.reload(); }
-    function showRecovery() { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('recoveryForm').classList.remove('hidden'); }
-    function hideRecovery() { document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('recoveryForm').classList.add('hidden'); }
-    function recoverAuth() {
-        const code = document.getElementById('recoveryCodeInput').value;
-        if(code === localStorage.getItem(LS_RECOVERY)) {
-            const newPass = prompt("كلمة المرور الجديدة؟");
-            if(newPass) { localStorage.setItem(LS_PASS, btoa(newPass)); alert('تم استعادة الوصول!'); location.reload(); }
-        } else { alert('رمز التعافي خاطئ!'); }
-    }
+    // --- CONFIG & STATE ---
+    const LS_PLUGINS = 'daghes_plugins'; const LS_REPO = 'daghes_repo'; const LS_PROXY = 'daghes_proxy';
+    const PROXY_URL = localStorage.getItem(LS_PROXY) || ''; 
 
     // --- NAVIGATION ---
+    let editor;
     function showPanel(id) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
@@ -313,37 +291,47 @@
         if(id === 'project-manager') initRepoPath();
     }
 
-    // --- PROJECT MANAGER (GITHUB API) ---
+    // --- PROJECT MANAGER & CODE EDITOR ---
     function initRepoPath() {
         const saved = JSON.parse(localStorage.getItem(LS_REPO) || '{}');
         document.getElementById('pmRepoOwner').value = saved.owner || '';
         document.getElementById('pmRepoName').value = saved.repo || '';
+        if(!editor) {
+            const textarea = document.createElement('textarea');
+            textarea.id = 'repoFileContent';
+            document.getElementById('repoFileEditor').appendChild(textarea);
+            editor = CodeMirror.fromTextArea(textarea, {
+                mode: "htmlmixed",
+                theme: "dracula",
+                lineNumbers: true,
+                lineWrapping: true
+            });
+        }
     }
-
     function saveRepoPath() {
         const owner = document.getElementById('pmRepoOwner').value;
         const repo = document.getElementById('pmRepoName').value;
         localStorage.setItem(LS_REPO, JSON.stringify({ owner, repo }));
     }
-
     function logPM(msg) {
         const box = document.getElementById('pmLog');
         box.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + box.innerHTML;
     }
-
     async function fetchRepoDir() {
         saveRepoPath();
         const owner = document.getElementById('pmRepoOwner').value;
         const repo = document.getElementById('pmRepoName').value;
         const path = document.getElementById('pmPath').value || '/';
-        const token = prompt('أدخل GitHub Token:', localStorage.getItem(LS_RECOVERY)?'' : '');
+        const token = prompt('أدخل GitHub Token:', '');
         if(!token) return alert('Token مطلوب للوصول');
 
         logPM('جاري جلب الملفات...');
         try {
-            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-                headers: { Authorization: `token ${token}` }
-            });
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repo}/contents/${path}` 
+                : `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            
+            const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' } });
             if(!res.ok) throw new Error('فشل الوصول. تأكد من Token والصلاحيات.');
             const data = await res.json();
             const tree = document.getElementById('fileTree');
@@ -368,13 +356,15 @@
             alert(e.message);
         }
     }
-
     async function loadFile(item, token) {
         try {
-            const res = await fetch(item.url, { headers: { Authorization: `token ${token}` } });
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github${item.url}` 
+                : item.url;
+            const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
             const data = await res.json();
             const content = atob(data.content);
-            document.getElementById('repoFileContent').value = content;
+            if(editor) editor.setValue(content);
             document.getElementById('fileNameDisplay').innerText = item.path;
             // Save context
             sessionStorage.setItem('pmFileUrl', item.url);
@@ -384,9 +374,9 @@
             logPM('خطأ في التحميل: ' + e.message);
         }
     }
-
     async function saveFileToRepo() {
-        const content = document.getElementById('repoFileContent').value;
+        if(!editor) return alert('المحرر لم يتم تحميله.');
+        const content = editor.getValue();
         const url = sessionStorage.getItem('pmFileUrl');
         const sha = sessionStorage.getItem('pmFileSha');
         const owner = document.getElementById('pmRepoOwner').value;
@@ -398,16 +388,20 @@
 
         logPM('جاري حفظ الملف...');
         try {
-            const opts = { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `Update from Lab at ${new Date().toLocaleTimeString()}`, content: btoa(content) }) };
-            if(sha) opts.body = JSON.parse(opts.body); opts.body.sha = sha;
-
-            const res = await fetch(url, opts);
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github${url.replace('https://api.github.com', '')}` 
+                : url;
+            
+            const res = await fetch(apiUrl, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, 
+                body: JSON.stringify({ message: `Update from Lab at ${new Date().toLocaleTimeString()}`, content: btoa(content), sha: sha }) 
+            });
             const data = await res.json();
             logPM('✅ تم التحديث: ' + data.commit.message);
             alert('تم الحفظ بنجاح');
         } catch(e) { logPM('❌ خطأ: ' + e.message); alert(e.message); }
     }
-
     function createNewFile() {
         const name = prompt('اسم الملف الجديد (مثال: plugins/test.js):');
         if(!name) return;
@@ -419,8 +413,11 @@
 
         logPM('جاري إنشاء الملف...');
         try {
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${name}`;
-            const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `New file from Lab`, content: btoa(content) }) });
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repo}/contents/${name}` 
+                : `https://api.github.com/repos/${owner}/${repo}/contents/${name}`;
+
+            const res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `New file from Lab`, content: btoa(content) }) });
             const data = await res.json();
             logPM('✅ تم إنشاء الملف: ' + name);
             alert('تم إنشاء الملف بنجاح');
@@ -439,7 +436,7 @@
         ).join('');
     }
     function savePlugin() {
-        const name = document.getElementById('pluginName').value;
+        const name = document.getElementById('pluginName').value.trim();
         const body = document.getElementById('pluginBody').value;
         if(!name) return alert('أدخل الاسم');
         const plugins = JSON.parse(localStorage.getItem(LS_PLUGINS) || '[]');
@@ -453,8 +450,31 @@
         localStorage.setItem(LS_PLUGINS, JSON.stringify(plugins));
         loadPlugins();
     }
+    function exportPlugins() {
+        const data = localStorage.getItem(LS_PLUGINS) || '[]';
+        const blob = new Blob([data], {type:'application/json'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='daghes_plugins.json'; a.click();
+    }
+    document.getElementById('pluginUpload').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = JSON.parse(evt.target.result);
+                const current = JSON.parse(localStorage.getItem(LS_PLUGINS) || '[]');
+                const merged = [...current, ...data];
+                localStorage.setItem(LS_PLUGINS, JSON.stringify(merged));
+                loadPlugins();
+                alert('تم استيراد الإضافات بنجاح!');
+            } catch (err) {
+                alert('الملف غير صالح: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
     async function deployPluginToRepo() {
-        const name = document.getElementById('pluginName').value;
+        const name = document.getElementById('pluginName').value.trim();
         const body = document.getElementById('pluginBody').value;
         const owner = document.getElementById('pmRepoOwner').value;
         const repo = document.getElementById('pmRepoName').value;
@@ -468,8 +488,11 @@
         document.getElementById('pluginOutput').innerText = `جاري النشر... ${pluginPath}`;
 
         try {
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${pluginPath}`;
-            const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `Add plugin ${name} from Lab`, content: btoa(body) }) });
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repo}/contents/${pluginPath}` 
+                : `https://api.github.com/repos/${owner}/${repo}/contents/${pluginPath}`;
+
+            const res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` }, body: JSON.stringify({ message: `Add plugin ${name} from Lab`, content: btoa(body) }) });
             const data = await res.json();
             document.getElementById('pluginOutput').innerText = `✅ تم النشر بنجاح!\nرابط الملف: ${data.content.html_url}`;
         } catch(e) { document.getElementById('pluginOutput').innerText = `❌ خطأ: ${e.message}`; }
@@ -522,7 +545,7 @@
     }
 
     function decodeBase64File() {
-        if(!currentFileContent) return alert('قم برفع ملف أولاُ');
+        if(!currentFileContent) return alert('قم برفع ملف أولاً');
         try {
             if(/^[A-Za-z0-9+/=\s]*$/.test(currentFileContent.trim())) {
                 const decoded = atob(currentFileContent.trim());
@@ -564,12 +587,16 @@
         const [owner, repoName] = repo.split('/'); if(!owner || !repoName) { log('❌ تنسيق المستودع غير صحيح'); return; }
         log(`جاري مزامنة ${file}...`);
         try {
-            const checkRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}`, { headers: { Authorization: `token ${token}` } });
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repoName}/contents/${file}` 
+                : `https://api.github.com/repos/${owner}/${repoName}/contents/${file}`;
+
+            const checkRes = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
             let sha = '';
             if(checkRes.ok) { sha = (await checkRes.json()).sha; log('✅ الملف موجود، سيتم تحديثه.'); } 
             else { log('ℹ️ الملف غير موجود، سيتم إنشاؤه.'); }
             const content = document.documentElement.outerHTML; const base64Content = btoa(content);
-            const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}`, {
+            const commitRes = await fetch(apiUrl, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `token ${token}` },
                 body: JSON.stringify({ message: `Update from Daghes at ${new Date().toLocaleString()}`, content: base64Content, sha: sha || undefined })
             });
@@ -583,13 +610,20 @@
         const [owner, repoName] = repo.split('/');
         log(`جاري جلب ${file}...`);
         try {
-            const res = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}`, { headers: { Authorization: `token ${token}` } });
+            const apiUrl = PROXY_URL && PROXY_URL.startsWith('http') 
+                ? `${PROXY_URL}/github/repos/${owner}/${repoName}/contents/${file}` 
+                : `https://api.github.com/repos/${owner}/${repoName}/contents/${file}`;
+
+            const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
             if(res.ok) { const data = await res.json(); const content = atob(data.content); localStorage.setItem('devlab_synced_content', content); log('✅ تم جلب المحتوى.'); alert('تم جلب الملف!'); }
             else { log('❌ خطأ: لم يتم العثور على الملف'); }
         } catch(e) { log(`❌ خطأ في الاتصال: ${e.message}`); }
     }
 
     // --- SETTINGS ---
+    document.getElementById('proxyInput').addEventListener('input', (e) => {
+        localStorage.setItem(LS_PROXY, e.target.value);
+    });
     function fullReset() { if(confirm('هل أنت متأكد؟')) { localStorage.clear(); location.reload(); } }
     function toggleTheme() { document.body.classList.toggle('bg-slate-900'); document.body.classList.toggle('text-white'); }
     function exportCode() {
